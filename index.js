@@ -12,7 +12,9 @@ const contactsRoute = require('./routes/contacts');
 const app = express();
 
 // middleware
-app.use(cors());
+app.use(cors({
+    origin: ['https://frontend-jet-eight-43.vercel.app/']
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // connect DB
