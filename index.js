@@ -13,7 +13,8 @@ const app = express();
 
 // middleware
 app.use(cors({
-    origin: ['https://frontend-jet-eight-43.vercel.app/']
+    origin: ['https://frontend-jet-eight-43.vercel.app/'],
+    credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 
