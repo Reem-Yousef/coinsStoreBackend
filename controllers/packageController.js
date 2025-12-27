@@ -58,3 +58,32 @@ exports.bulkUpdate = async (req, res, next) => {
     next(err);
   }
 };
+
+// POST /api/packages/calculate
+exports.calculate = async (req, res) => {
+  const { coins, amount } = req.body;
+
+  const packages = await Package.find({ isActive: true });
+
+  if (coins) {
+    const tier = packages.find(
+      p => coins >= p.minCoins && coins <= p.maxCoins
+    );
+    if (!tier) return res.status(400).json({ error: "Invalid coins" });
+
+    const price = (coins / 1000) * tier.pricePerK;
+    return res.json({ coins, price });
+  }
+
+  if (amount) {
+    const tier = packages.sort((a,b)=>a.pricePerK-b.pricePerK)
+      .find(p => amount >= (p.minCoins/1000)*p.pricePerK);
+
+    if (!tier) return res.status(400).json({ error: "Invalid amount" });
+
+    const coinsCalculated = Math.floor((amount / tier.pricePerK) * 1000);
+    return res.json({ amount, coins: coinsCalculated });
+  }
+
+  res.status(400).json({ error: "Invalid input" });
+};

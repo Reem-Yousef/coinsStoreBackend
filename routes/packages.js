@@ -9,5 +9,6 @@ router.post('/', adminAuth, packageController.create);
 router.put('/bulk', adminAuth, packageController.bulkUpdate);
 router.put('/:id', adminAuth, packageController.update);
 router.delete('/:id', adminAuth, packageController.remove);
+router.post("/calculate", packageController.calculate);
 
 module.exports = router;
