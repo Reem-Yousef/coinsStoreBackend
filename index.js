@@ -13,7 +13,7 @@ const app = express();
 
 // middleware
 app.use(cors({
-    origin: ['https://frontend-jet-eight-43.vercel.app',
+    origin: [
       "https://3fretstore.com",
     "https://www.3fretstore.com"
     ],
@@ -47,3 +47,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
+
+
+// 'https://frontend-jet-eight-43.vercel.app',
