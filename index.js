@@ -13,7 +13,10 @@ const app = express();
 
 // middleware
 app.use(cors({
-    origin: ['https://frontend-jet-eight-43.vercel.app'],
+    origin: ['https://frontend-jet-eight-43.vercel.app',
+      "https://3fretstore.com",
+    "https://www.3fretstore.com"
+    ],
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -40,7 +43,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 module.exports = app;
