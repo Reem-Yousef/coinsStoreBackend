@@ -2,7 +2,10 @@ const Package = require('../models/Package');
 
 exports.getAll = async (req, res, next) => {
   try {
-    const packages = await Package.find({ isActive: true }).sort({ order: 1 });
+    const packages = await Package.find({ isActive: true })
+      .sort({ order: 1 })
+      .select('title description minCoins maxCoins order');  // ✅ بس الحاجات اللي المستخدم محتاجها
+    
     res.json({ success: true, data: packages });
   } catch (err) {
     next(err);
@@ -59,31 +62,35 @@ exports.bulkUpdate = async (req, res, next) => {
   }
 };
 
-// POST /api/packages/calculate
-exports.calculate = async (req, res) => {
-  const { coins, amount } = req.body;
+exports.calculate = async (req, res, next) => {
+  try {
+    const { coins, amount } = req.body;
 
-  const packages = await Package.find({ isActive: true });
+    const packages = await Package.find({ isActive: true });
 
-  if (coins) {
-    const tier = packages.find(
-      p => coins >= p.minCoins && coins <= p.maxCoins
-    );
-    if (!tier) return res.status(400).json({ error: "Invalid coins" });
+    if (coins) {
+      const tier = packages.find(
+        p => coins >= p.minCoins && coins <= p.maxCoins
+      );
+      if (!tier) return res.status(400).json({ success: false, error: "Invalid coins" });
 
-    const price = (coins / 1000) * tier.pricePerK;
-    return res.json({ coins, price });
+      const price = (coins / 1000) * tier.pricePerK;
+      return res.json({ success: true, coins, price: Number(price.toFixed(2)) });
+    }
+
+    if (amount) {
+      const tier = packages
+        .sort((a, b) => a.pricePerK - b.pricePerK)
+        .find(p => amount >= (p.minCoins / 1000) * p.pricePerK);
+
+      if (!tier) return res.status(400).json({ success: false, error: "Invalid amount" });
+
+      const coinsCalculated = Math.floor((amount / tier.pricePerK) * 1000);
+      return res.json({ success: true, amount, coins: coinsCalculated });
+    }
+
+    res.status(400).json({ success: false, error: "Invalid input" });
+  } catch (err) {
+    next(err);
   }
-
-  if (amount) {
-    const tier = packages.sort((a,b)=>a.pricePerK-b.pricePerK)
-      .find(p => amount >= (p.minCoins/1000)*p.pricePerK);
-
-    if (!tier) return res.status(400).json({ error: "Invalid amount" });
-
-    const coinsCalculated = Math.floor((amount / tier.pricePerK) * 1000);
-    return res.json({ amount, coins: coinsCalculated });
-  }
-
-  res.status(400).json({ error: "Invalid input" });
 };
