@@ -2,12 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const cookieParser = require('cookie-parser');
 
 const packagesRoute = require('./routes/packages');
 const adminRoute = require('./routes/admin');
 const paymentsRoute = require('./routes/payments');
 const transactionsRoute = require('./routes/transactions');
 const contactsRoute = require('./routes/contacts');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
+app.use(cookieParser());
+
 // connect DB
 connectDB(process.env.MONGODB_URI);
 
@@ -30,6 +34,7 @@ app.use('/api/admin', adminRoute);
 app.use('/api/payments', paymentsRoute);
 app.use('/api/transactions', transactionsRoute);
 app.use('/api/contacts', contactsRoute);
+app.use('/api/auth', authRoutes);
 
 // test endpoint
 app.get('/', (req, res) => res.send('Backend is running'));
