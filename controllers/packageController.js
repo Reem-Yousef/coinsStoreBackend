@@ -82,7 +82,6 @@ exports.calculate = async (req, res) => {
   try {
     const { coins, amount } = req.body;
 
-    // جلب كل الباقات النشطة
     const packages = await Package.find({ isActive: true }).sort({ order: 1 });
 
     if (!packages || packages.length === 0) {
@@ -93,7 +92,6 @@ exports.calculate = async (req, res) => {
     if (coins) {
       const coinsNum = Number(coins);
       
-      // إيجاد الباقة المناسبة
       const pkg = packages.find(p => 
         coinsNum >= p.minCoins && coinsNum <= p.maxCoins
       );
@@ -105,37 +103,43 @@ exports.calculate = async (req, res) => {
         });
       }
 
-      // حساب السعر بدقة
       const price = (coinsNum / 1000) * pkg.pricePerK;
       
       return res.json({
         success: true,
         price: parseFloat(price.toFixed(2)),
+        coins: coinsNum,
         packageTitle: pkg.title,
         pricePerK: pkg.pricePerK
       });
     }
 
-    // ✅ حساب عدد الكوينات من المبلغ
+    // ✅ حساب الكوينات من المبلغ - الطريقة الصحيحة
     if (amount) {
       const amountNum = Number(amount);
       
-      // جرّب كل باقة واختار اللي تدي أكبر عدد كوينات
       let bestResult = null;
       
+      // ✅ جرّب كل باقة واحسب الكوينات
       for (const pkg of packages) {
-        // حساب عدد الكوينات الممكنة
-        const possibleCoins = Math.floor((amountNum / pkg.pricePerK) * 1000);
+        const calculatedCoins = (amountNum / pkg.pricePerK) * 1000;
+        const roundedCoins = Math.floor(calculatedCoins);
         
-        // تحقق إن الكوينات في نطاق الباقة
-        if (possibleCoins >= pkg.minCoins && possibleCoins <= pkg.maxCoins) {
-          if (!bestResult || possibleCoins > bestResult.coins) {
-            bestResult = {
-              coins: possibleCoins,
-              packageTitle: pkg.title,
-              pricePerK: pkg.pricePerK,
-              actualPrice: (possibleCoins / 1000) * pkg.pricePerK
-            };
+        // ✅ تأكد إن الكوينات في نطاق الباقة
+        if (roundedCoins >= pkg.minCoins && roundedCoins <= pkg.maxCoins) {
+          // ✅ احسب السعر الفعلي للكوينات دي
+          const actualPrice = (roundedCoins / 1000) * pkg.pricePerK;
+          
+          // ✅ تأكد إن السعر الفعلي <= المبلغ المدخل
+          if (actualPrice <= amountNum + 0.01) { // +0.01 للتقريب
+            if (!bestResult || roundedCoins > bestResult.coins) {
+              bestResult = {
+                coins: roundedCoins,
+                price: parseFloat(actualPrice.toFixed(2)),
+                packageTitle: pkg.title,
+                pricePerK: pkg.pricePerK
+              };
+            }
           }
         }
       }
@@ -150,9 +154,9 @@ exports.calculate = async (req, res) => {
       return res.json({
         success: true,
         coins: bestResult.coins,
+        price: bestResult.price,
         packageTitle: bestResult.packageTitle,
-        pricePerK: bestResult.pricePerK,
-        actualPrice: parseFloat(bestResult.actualPrice.toFixed(2))
+        pricePerK: bestResult.pricePerK
       });
     }
 
