@@ -78,70 +78,91 @@ exports.bulkUpdate = async (req, res, next) => {
 };
 
 // POST /api/packages/calculate - حساب السعر (آمن)
-exports.calculate = async (req, res, next) => {
+exports.calculate = async (req, res) => {
   try {
     const { coins, amount } = req.body;
 
-    // التحقق من المدخلات
-    if (!coins && !amount) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "coins or amount is required" 
-      });
+    // جلب كل الباقات النشطة
+    const packages = await Package.find({ isActive: true }).sort({ order: 1 });
+
+    if (!packages || packages.length === 0) {
+      return res.json({ success: false, message: 'لا توجد باقات متاحة' });
     }
 
-    const packages = await Package.find({ isActive: true });
-
-    // الحساب بناءً على الكوينات
+    // ✅ حساب السعر من عدد الكوينات
     if (coins) {
-      const tier = packages.find(
-        p => coins >= p.minCoins && coins <= p.maxCoins
+      const coinsNum = Number(coins);
+      
+      // إيجاد الباقة المناسبة
+      const pkg = packages.find(p => 
+        coinsNum >= p.minCoins && coinsNum <= p.maxCoins
       );
 
-      if (!tier) {
-        return res.status(400).json({ 
+      if (!pkg) {
+        return res.json({ 
           success: false, 
-          error: "Invalid coins range" 
+          message: 'عدد الكوينات خارج النطاق المتاح' 
         });
       }
 
-      const price = (coins / 1000) * tier.pricePerK;
-      return res.json({ 
-        success: true, 
-        coins, 
-        price: Number(price.toFixed(2)) 
-      });
-    }
-
-    // الحساب بناءً على المبلغ
-    if (amount) {
-      const sortedPackages = packages.sort((a, b) => a.pricePerK - b.pricePerK);
+      // حساب السعر بدقة
+      const price = (coinsNum / 1000) * pkg.pricePerK;
       
-      const tier = sortedPackages.find(p => {
-        const minPrice = (p.minCoins / 1000) * p.pricePerK;
-        return amount >= minPrice;
-      });
-
-      if (!tier) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Invalid amount" 
-        });
-      }
-
-      const coinsCalculated = Math.floor((amount / tier.pricePerK) * 1000);
-      return res.json({ 
-        success: true, 
-        amount, 
-        coins: coinsCalculated 
+      return res.json({
+        success: true,
+        price: parseFloat(price.toFixed(2)),
+        packageTitle: pkg.title,
+        pricePerK: pkg.pricePerK
       });
     }
 
-  } catch (err) {
-    console.error('Calculate error:', err);
-    res.status(500).json({ 
+    // ✅ حساب عدد الكوينات من المبلغ
+    if (amount) {
+      const amountNum = Number(amount);
+      
+      // جرّب كل باقة واختار اللي تدي أكبر عدد كوينات
+      let bestResult = null;
+      
+      for (const pkg of packages) {
+        // حساب عدد الكوينات الممكنة
+        const possibleCoins = Math.floor((amountNum / pkg.pricePerK) * 1000);
+        
+        // تحقق إن الكوينات في نطاق الباقة
+        if (possibleCoins >= pkg.minCoins && possibleCoins <= pkg.maxCoins) {
+          if (!bestResult || possibleCoins > bestResult.coins) {
+            bestResult = {
+              coins: possibleCoins,
+              packageTitle: pkg.title,
+              pricePerK: pkg.pricePerK,
+              actualPrice: (possibleCoins / 1000) * pkg.pricePerK
+            };
+          }
+        }
+      }
+
+      if (!bestResult) {
+        return res.json({ 
+          success: false, 
+          message: 'المبلغ غير كافٍ لأي باقة' 
+        });
+      }
+
+      return res.json({
+        success: true,
+        coins: bestResult.coins,
+        packageTitle: bestResult.packageTitle,
+        pricePerK: bestResult.pricePerK,
+        actualPrice: parseFloat(bestResult.actualPrice.toFixed(2))
+      });
+    }
+
+    return res.json({ 
       success: false, 
-      error: "Server error" 
+      message: 'يرجى إدخال عدد الكوينات أو المبلغ' 
     });
+
+  } catch (error) {
+    console.error('Calculate error:', error);
+    res.status(500).json({ success: false, message: 'خطأ في الحساب' });
   }
 };
