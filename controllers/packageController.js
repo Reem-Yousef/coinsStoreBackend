@@ -82,16 +82,17 @@ exports.calculate = async (req, res) => {
   try {
     const { coins, amount } = req.body;
 
-    const packages = await Package.find({ isActive: true }).sort({ order: 1 });
+    const packages = await Package.find({ isActive: true }).sort({ minCoins: 1 });
 
     if (!packages || packages.length === 0) {
       return res.json({ success: false, message: 'لا توجد باقات متاحة' });
     }
 
     // ✅ حساب السعر من عدد الكوينات
-    if (coins) {
+    if (coins !== undefined && coins !== null) {
       const coinsNum = Number(coins);
       
+      // إيجاد الباقة المناسبة
       const pkg = packages.find(p => 
         coinsNum >= p.minCoins && coinsNum <= p.maxCoins
       );
@@ -114,27 +115,29 @@ exports.calculate = async (req, res) => {
       });
     }
 
-    // ✅ حساب الكوينات من المبلغ - الطريقة الصحيحة
-    if (amount) {
+    // ✅ حساب الكوينات من المبلغ
+    if (amount !== undefined && amount !== null) {
       const amountNum = Number(amount);
       
+      // ✅ جرّب كل باقة من الأرخص للأغلى
       let bestResult = null;
       
-      // ✅ جرّب كل باقة واحسب الكوينات
       for (const pkg of packages) {
-        const calculatedCoins = (amountNum / pkg.pricePerK) * 1000;
-        const roundedCoins = Math.floor(calculatedCoins);
+        // احسب عدد الكوينات الممكنة
+        const exactCoins = (amountNum / pkg.pricePerK) * 1000;
+        const flooredCoins = Math.floor(exactCoins);
         
-        // ✅ تأكد إن الكوينات في نطاق الباقة
-        if (roundedCoins >= pkg.minCoins && roundedCoins <= pkg.maxCoins) {
-          // ✅ احسب السعر الفعلي للكوينات دي
-          const actualPrice = (roundedCoins / 1000) * pkg.pricePerK;
+        // ✅ تحقق إن الكوينات في نطاق الباقة
+        if (flooredCoins >= pkg.minCoins && flooredCoins <= pkg.maxCoins) {
+          // احسب السعر الفعلي
+          const actualPrice = (flooredCoins / 1000) * pkg.pricePerK;
           
-          // ✅ تأكد إن السعر الفعلي <= المبلغ المدخل
-          if (actualPrice <= amountNum + 0.01) { // +0.01 للتقريب
-            if (!bestResult || roundedCoins > bestResult.coins) {
+          // ✅ تأكد إن السعر الفعلي مش أكبر من المبلغ المدخل
+          if (actualPrice <= amountNum) {
+            // خد أكبر عدد كوينات
+            if (!bestResult || flooredCoins > bestResult.coins) {
               bestResult = {
-                coins: roundedCoins,
+                coins: flooredCoins,
                 price: parseFloat(actualPrice.toFixed(2)),
                 packageTitle: pkg.title,
                 pricePerK: pkg.pricePerK
