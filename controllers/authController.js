@@ -103,3 +103,39 @@ exports.logout = (req, res) => {
   res.clearCookie('refreshToken');
   res.json({ success: true, message: 'Logged out successfully' });
 };
+
+// GET /api/auth/me
+exports.me = (req, res) => {
+  try {
+    // حاول الحصول على token من header أو كوكي
+    const authHeader = req.headers['authorization'] || '';
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.cookies && (req.cookies.accessToken || req.cookies.token)) {
+      token = req.cookies.accessToken || req.cookies.token;
+    }
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No access token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return res.json({
+      success: true,
+      user: {
+        role: decoded.role,
+        loginTime: decoded.loginTime
+      }
+    });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token expired',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+    return res.status(401).json({ success: false, message: 'Invalid access token' });
+  }
+};
