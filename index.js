@@ -128,6 +128,9 @@ app.use('/api/auth', authLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
+console.log('🔌 MONGODB_URI exists:', !!process.env.MONGODB_URI);
+console.log('🔌 URI starts with:', process.env.MONGODB_URI?.substring(0, 20));
+
 // ===== Connect DB =====
 connectDB(process.env.MONGODB_URI);
 
