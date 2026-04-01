@@ -81,9 +81,11 @@ exports.bulkUpdate = async (req, res, next) => {
 exports.calculate = async (req, res) => {
   try {
     const { coins, amount } = req.body;
+    console.log('📥 Request body:', req.body);
 
     const packages = await Package.find({ isActive: true }).sort({ minCoins: 1 });
-
+    console.log('📦 Packages found:', packages.length); 
+    console.log('📦 First package:', packages[0])
     if (!packages || packages.length === 0) {
       return res.json({ success: false, message: 'لا توجد باقات متاحة' });
     }
